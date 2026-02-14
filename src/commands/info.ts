@@ -1,3 +1,4 @@
+import { safeReply } from "../utils/api.js";
 import { warnings, mutedUsers } from "../utils/storage.js";
 
 export async function handleInfo(message, args) {
@@ -43,12 +44,12 @@ export async function handleInfo(message, args) {
         infoText += `**Muted:** No\n`;
     }
 
-    await message.reply(infoText);
+    await safeReply(message, infoText);
 }
 
 export async function handleServerInfo(message) {
     if (!message.server) {
-        return await message.reply("❌ This command can only be used in a server.");
+        return await safeReply(message, "❌ This command can only be used in a server.");
     }
 
     const server = message.server;
@@ -87,5 +88,5 @@ export async function handleServerInfo(message) {
         console.error("Error fetching server stats:", e);
     }
 
-    await message.reply(infoText);
+    await safeReply(message, infoText);
 }

@@ -3,25 +3,26 @@ import { hasPermission } from "../utils/permissions.js";
 import { logAction } from "../utils/logger.js";
 import { warnings, saveWarnings } from "../utils/storage.js";
 import { handleMute } from "./mute.js";
+import { safeReply } from "../utils/api.js";
 
 export async function handleWarn(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "KickMembers")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const mentions = message.mentions;
     if (!mentions || mentions.length === 0) {
-        return await message.reply("❌ Please mention a user to warn.");
+        return await safeReply(message, "❌ Please mention a user to warn.");
     }
 
     const targetUser = mentions[0];
     const reason = args.slice(1).join(" ");
     if (!reason) {
-        return await message.reply("❌ Please provide a reason for the warning.");
+        return await safeReply(message, "❌ Please provide a reason for the warning.");
     }
 
     if (!warnings.has(targetUser.id)) {
@@ -43,7 +44,7 @@ export async function handleWarn(message, args, member) {
     const successMsg = config.messages.warnSuccess
         .replace("{user}", targetUser.username)
         .replace("{count}", userWarnings.length);
-    await message.reply(`${successMsg}\nReason: ${reason}`);
+    await safeReply(message, `${successMsg}\nReason: ${reason}`);
 
     if (config.moderation.dmOnWarn) {
         try {
@@ -100,7 +101,7 @@ export async function handleWarnings(message, args) {
     const userWarnings = warnings.get(targetUser.id) || [];
 
     if (userWarnings.length === 0) {
-        return await message.reply(`${targetUser.username} has no warnings.`);
+        return await safeReply(message, `${targetUser.username} has no warnings.`);
     }
 
     let warningText = `**⚠️ Warnings for ${targetUser.username}** (${userWarnings.length} total)\n\n`;
@@ -114,25 +115,25 @@ export async function handleWarnings(message, args) {
     if (warningText.length > 2000) {
         const chunks = warningText.match(/[\s\S]{1,1900}/g) || [];
         for (const chunk of chunks) {
-            await message.reply(chunk);
+            await safeReply(message, chunk);
         }
     } else {
-        await message.reply(warningText);
+        await safeReply(message, warningText);
     }
 }
 
 export async function handleClearWarnings(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "KickMembers")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const mentions = message.mentions;
     if (!mentions || mentions.length === 0) {
-        return await message.reply("❌ Please mention a user to clear warnings for.");
+        return await safeReply(message, "❌ Please mention a user to clear warnings for.");
     }
 
     const targetUser = mentions[0];
@@ -140,5 +141,5 @@ export async function handleClearWarnings(message, args, member) {
     warnings.delete(targetUser.id);
     saveWarnings();
 
-    await message.reply(`✅ Cleared ${clearedCount} warning(s) for ${targetUser.username}.`);
+    await safeReply(message, `✅ Cleared ${clearedCount} warning(s) for ${targetUser.username}.`);
 }

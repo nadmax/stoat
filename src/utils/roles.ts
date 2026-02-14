@@ -1,37 +1,43 @@
 import { reactionRoleMessages, saveReactionRoles } from "./storage.js";
 import { logAction, logInfo, logError } from "./logger.js";
 
+interface ReactionRoleOptions {
+    notifyUsers?: boolean;
+}
+
 export const emojiRoleMap = new Map([
-    ["🌹", "01KHC8XC2M75GGCA5B0MTB9MSY"],
-    ["🟣", "01KHCEHE0P4S2ZTHDMQYGDH3NA"],
-    ["🔵", "01KHCEH7J27BDZ30H78SPCQN09"],
-    ["📘", "01KHCEGY9C8YSAPZZKGC9H8C4P"],
-    ["🟢", "01KHCEKEKX9K4MPYS4W9QFCD63"],
-    ["🟡", "01KHCEKKSFV9Q949GMEHNQEZ9Y"],
-    ["🟠", "01KHCEQGJ6CZM1M9PPYMMSQ0K0"],
-    ["🟤", "01KHCEM0T986MG4FF8BBNCP1CZ"],
-    ["🔴", "01KHCEKSG2MM9A128M4JN62V01"],
+    ["🌹", "01KHEP74HNQXF2HJ3H1WQMKY3R"],
+    ["🟣", "01KHEPAR5JY662K6H8JAV8VXF1"],
+    ["🔵", "01KHEP8SKMPNR9GY24ADQPED5G"],
+    ["📘", "01KHEP97QGNVYCBMJE42WDSFZQ"],
+    ["🟢", "01KHEP7XP1R9TB9KAW4RBZRS01"],
+    ["🟡", "01KHEP9QKBF4HTY0PKS6XK55WB"],
+    ["🟠", "01KHEPA3EA4ZG8TW5TRBZ9JVWV"],
+    ["🟤", "01KHEP6KJZZS3QB3PPPD1AKW48"],
+    ["🔴", "01KHEM216VRQWEVRG26MM0XYEP"],
 ]);
 
-export const revoltEmojiMap = new Map([
-    ["rose", "01KHC8XC2M75GGCA5B0MTB9MSY"],
-    ["purple_circle", "01KHCEHE0P4S2ZTHDMQYGDH3NA"],
-    ["large_blue_circle", "01KHCEH7J27BDZ30H78SPCQN09"],
-    ["blue_book", "01KHCEGY9C8YSAPZZKGC9H8C4P"],
-    ["green_circle", "01KHCEKEKX9K4MPYS4W9QFCD63"],
-    ["yellow_circle", "01KHCEKKSFV9Q949GMEHNQEZ9Y"],
-    ["orange_circle", "01KHCEQGJ6CZM1M9PPYMMSQ0K0"],
-    ["brown_circle", "01KHCEM0T986MG4FF8BBNCP1CZ"],
-    ["red_circle", "01KHCEKSG2MM9A128M4JN62V01"],
+export const stoatEmojiMap = new Map([
+    ["rose", "01KHEP74HNQXF2HJ3H1WQMKY3R"],
+    ["purple_circle", "01KHEPAR5JY662K6H8JAV8VXF1"],
+    ["large_blue_circle", "01KHEP8SKMPNR9GY24ADQPED5G"],
+    ["blue_book", "01KHEP97QGNVYCBMJE42WDSFZQ"],
+    ["green_circle", "01KHEP7XP1R9TB9KAW4RBZRS01"],
+    ["yellow_circle", "01KHEP9QKBF4HTY0PKS6XK55WB"],
+    ["orange_circle", "01KHEPA3EA4ZG8TW5TRBZ9JVWV"],
+    ["brown_circle", "01KHEP6KJZZS3QB3PPPD1AKW48"],
+    ["red_circle", "01KHEM216VRQWEVRG26MM0XYEP"],
 ]);
+
+const reactionCooldown = new Map<string, number>();
 
 export function getRoleForEmoji(emoji) {
     if (emojiRoleMap.has(emoji)) {
         return emojiRoleMap.get(emoji);
     }
 
-    if (revoltEmojiMap.has(emoji)) {
-        return revoltEmojiMap.get(emoji);
+    if (stoatEmojiMap.has(emoji)) {
+        return stoatEmojiMap.get(emoji);
     }
 
     return null;
@@ -40,14 +46,14 @@ export function getRoleForEmoji(emoji) {
 export function getRoleNameForEmoji(emoji) {
     const roleNames = {
         "🌹": "Rose",
-        "🟣": "Violet",
-        "🔵": "Bleu foncé",
-        "📘": "Bleu clair",
-        "🟢": "Vert",
-        "🟡": "Jaune",
+        "🟣": "Purple",
+        "🔵": "Dark blue",
+        "📘": "Light blue",
+        "🟢": "Green",
+        "🟡": "Yellow",
         "🟠": "Orange",
-        "🟤": "Marron",
-        "🔴": "Rouge",
+        "🟤": "Brown",
+        "🔴": "Red",
     };
 
     return roleNames[emoji] || "Unknown Role";
@@ -59,7 +65,6 @@ export async function handleReactionAdd(message, userId, emoji) {
         if (!messageConfig) {
             return;
         }
-
         if (!message.server || message.server.id !== messageConfig.serverId) {
             return;
         }
@@ -75,33 +80,38 @@ export async function handleReactionAdd(message, userId, emoji) {
             logError(`Could not fetch member ${userId}`);
             return;
         }
-
-        if (member.roles && member.roles.includes(roleId)) {
-            logInfo(`User ${member.user.username} already has role ${roleId}`);
+        if (member.user?.bot) {
+            logInfo(`OpenMod is adding emoji ${emoji}`);
             return;
         }
 
-        const currentRoles = member.roles || [];
-        const newRoles = [...currentRoles, roleId];
+        const key = `${userId}-${message.id}`;
+        const now = Date.now();
+        const lastAction = reactionCooldown.get(key) || 0;
+        if (now - lastAction < 2000) {
+            logInfo(`User ${member.user.username} is on cooldown.`);
+            return;
+        }
 
-        await member.edit({ roles: newRoles });
+        reactionCooldown.set(key, now);
+
+        const currentRoles = member.roles || [];
+        if (currentRoles.includes(roleId)) {
+            return;
+        }
+
+        await member.edit({
+            roles: [...currentRoles, roleId]
+        });
 
         const roleName = getRoleNameForEmoji(emoji);
         logInfo(`Added role ${roleName} to ${member.user.username}`);
 
-        if (messageConfig.notifyUsers) {
-            try {
-                const dmChannel = await member.user.openDM();
-                await dmChannel.sendMessage(
-                    `✅ You have been assigned the **${roleName}** role in ${message.server.name}!`
-                );
-            } catch (e) {
-                logInfo(`Could not DM user ${member.user.username} about role assignment`);
-            }
-        }
-
     } catch (error) {
-        logError("Error handling reaction add:", error);
+        logError(
+            "Error handling reaction add:",
+            error instanceof Error ? error.message : String(error)
+        );
     }
 }
 
@@ -127,8 +137,9 @@ export async function handleReactionRemove(message, userId, emoji) {
             return;
         }
 
+        const roleName = getRoleNameForEmoji(emoji);
         if (!member.roles || !member.roles.includes(roleId)) {
-            logInfo(`User ${member.user.username} doesn't have role ${roleId}`);
+            logInfo(`User ${member.user.username} doesn't have role ${roleName} with ID ${roleId}`);
             return;
         }
 
@@ -136,19 +147,7 @@ export async function handleReactionRemove(message, userId, emoji) {
 
         await member.edit({ roles: newRoles });
 
-        const roleName = getRoleNameForEmoji(emoji);
         logInfo(`Removed role ${roleName} from ${member.user.username}`);
-
-        if (messageConfig.notifyUsers) {
-            try {
-                const dmChannel = await member.user.openDM();
-                await dmChannel.sendMessage(
-                    `❌ The **${roleName}** role has been removed in ${message.server.name}.`
-                );
-            } catch (e) {
-                logInfo(`Could not DM user ${member.user.username} about role removal`);
-            }
-        }
 
     } catch (error) {
         logError("Error handling reaction remove:", error);
@@ -159,12 +158,17 @@ export function isReactionRoleMessage(messageId) {
     return reactionRoleMessages.has(messageId);
 }
 
-export function addReactionRoleMessage(messageId, serverId, options = {}) {
+export function addReactionRoleMessage(
+    messageId: string,
+    serverId: string,
+    options: ReactionRoleOptions = {}
+) {
     reactionRoleMessages.set(messageId, {
         serverId,
-        notifyUsers: options.notifyUsers !== false,
+        notifyUsers: options.notifyUsers ?? true,
         createdAt: Date.now()
     });
+
     saveReactionRoles();
 }
 

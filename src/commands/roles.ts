@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { safeReply } from "../utils/api.js";
 import { hasPermission } from "../utils/permissions.js";
 import {
     addReactionRoleMessage,
@@ -10,25 +11,25 @@ import {
 
 export async function handleSetupReactionRoles(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "ManageRoles")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const reactionRoleText =
         `**🎨 Choose Your Color Role**\n\n` +
         `React to this message with an emoji to get the corresponding role:\n\n` +
         `🌹 **Rose**\n` +
-        `🟣 **Violet**\n` +
-        `🔵 **Bleu foncé**\n` +
-        `📘 **Bleu clair**\n` +
-        `🟢 **Vert**\n` +
-        `🟡 **Jaune**\n` +
+        `🟣 **Purple**\n` +
+        `🔵 **Dark blue**\n` +
+        `📘 **Light blue**\n` +
+        `🟢 **Green**\n` +
+        `🟡 **Yellow**\n` +
         `🟠 **Orange**\n` +
-        `🟤 **Marron**\n` +
-        `🔴 **Rouge**\n\n` +
+        `🟤 **Brown**\n` +
+        `🔴 **Red**\n\n` +
         `*Remove your reaction to remove the role.*`;
 
     try {
@@ -38,61 +39,64 @@ export async function handleSetupReactionRoles(message, args, member) {
             notifyUsers: true
         });
 
-        const emojis = ["🌹", "🟣", "🔵", "📘", "🟢", "🟡", "🟠", "🟤", "🔴"];
-        for (const emoji of emojis) {
-            try {
-                // Note: revolt.js might not support adding reactions programmatically yet
-                // You may need to add reactions manually for now
-                // await roleMessage.react(emoji);
-            } catch (e) {
-                console.log(`Could not add reaction ${emoji}:`, e);
+        const emojis: string[] = ["🌹", "🟣", "🔵", "📘", "🟢", "🟡", "🟠", "🟤", "🔴"];
+        const addReactionWithRetry = async (emoji, retries = 2) => {
+            for (let attempt = 0; attempt <= retries; attempt++) {
+                try {
+                    await roleMessage.react(emoji);
+                    return true;
+                } catch (e) {
+                    if (attempt === retries) {
+                        return false;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                }
             }
+            return false;
+        };
+
+        for (const emoji of emojis) {
+            await addReactionWithRetry(emoji);
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
-
-        await message.reply(
-            `✅ Reaction role message created! Please manually add the reactions:\n` +
-            `🌹 🟣 🔵 📘 🟢 🟡 🟠 🟤 🔴\n\n` +
-            `Users can now react to get their color roles!`
-        );
-
     } catch (error) {
         console.error("Error creating reaction role message:", error);
-        await message.reply("❌ Failed to create reaction role message.");
+        await safeReply(message, "❌ Failed to create reaction role message.");
     }
 }
 
 export async function handleRemoveReactionRole(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "ManageRoles")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const messageId = args[0];
     if (!messageId) {
-        return await message.reply("❌ Please provide a message ID to remove from reaction roles.");
+        return await safeReply(message, "❌ Please provide a message ID to remove from reaction roles.");
     }
 
     const removed = removeReactionRoleMessage(messageId);
 
     if (removed) {
-        await message.reply("✅ Reaction role message removed.");
+        await safeReply(message, "✅ Reaction role message removed.");
     } else {
-        await message.reply("❌ Message not found in reaction role list.");
+        await safeReply(message, "❌ Message not found in reaction role list.");
     }
 }
 
 export async function handleListReactionRoles(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     const reactionRoles = getAllReactionRoleMessages();
 
     if (reactionRoles.length === 0) {
-        return await message.reply("No reaction role messages configured.");
+        return await safeReply(message, "No reaction role messages configured.");
     }
 
     let listText = `**📋 Reaction Role Messages** (${reactionRoles.length} total)\n\n`;
@@ -105,16 +109,16 @@ export async function handleListReactionRoles(message, args, member) {
         }
     }
 
-    await message.reply(listText);
+    await safeReply(message, listText);
 }
 
 export async function handleUpdateRoleMap(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "ManageRoles")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     let mapText = `**🎨 Current Emoji → Role Mapping**\n\n`;
@@ -126,5 +130,5 @@ export async function handleUpdateRoleMap(message, args, member) {
 
     mapText += `\n*To update role IDs, edit \`utils/reactionroles.js\`*`;
 
-    await message.reply(mapText);
+    await safeReply(message, mapText);
 }
