@@ -1,5 +1,5 @@
 export const config = {
-    prefix: process.env.PREFIX || "!",
+    prefix: process.env.PREFIX || "/",
 
     antiSpam: {
         enabled: true,
@@ -44,7 +44,7 @@ export const config = {
     },
 
     purge: {
-        maxMessages: 100,
+        maxMessages: 10,
         deleteDelay: 5000
     },
 
@@ -99,5 +99,3 @@ export const config = {
         info: "#00aaff"
     }
 };
-
-export default config;

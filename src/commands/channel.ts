@@ -1,76 +1,87 @@
+import { Message } from "revolt.js";
+import { safeReply, safeApi, sleep } from "../utils/api.js";
+
 import { config } from "../config.js";
 import { hasPermission } from "../utils/permissions.js";
 import { logAction } from "../utils/logger.js";
 
-export async function handlePurge(message, args, member) {
+export async function handlePurge(message: Message, args: string[], member: any) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
-
     if (!await hasPermission(member, "ManageMessages")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const amount = parseInt(args[0]);
-
     if (isNaN(amount) || amount < 1 || amount > config.purge.maxMessages) {
-        return await message.reply(`❌ Please provide a number between 1 and ${config.purge.maxMessages}.`);
+        return await safeReply(message, `❌ Please provide a number between 1 and ${config.purge.maxMessages}.`);
     }
 
     try {
-        const messages = await message.channel.fetchMessages({ limit: amount + 1 });
-        let deleted = 0;
+        const fetched = await message.channel?.fetchMessagesWithUsers({ limit: amount + 1 });
+        if (!fetched) {
+            return await safeReply(message, "❌ Could not fetch messages.");
+        }
+
+        const messages = fetched.messages.filter(m => m.id !== message.id);
+        let deletedCount = 0;
         for (const msg of messages) {
-            if (msg.id !== message.id) {
+            try {
+                await safeApi(() => msg.delete(), 3, 500);
+                deletedCount++;
+                await sleep(400);
+            } catch (e) {
+                console.error("Delete failed, retrying once...", e);
                 try {
-                    await msg.delete();
-                    deleted++;
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (e) {
-                    console.error("Could not delete message:", e);
+                    await sleep(2000);
+                    await safeApi(() => msg.delete());
+                    deletedCount++;
+                } catch (err) {
+                    console.error("Second delete attempt failed:", err);
                 }
             }
         }
 
-        const successMsg = config.messages.purgeSuccess
-            .replace("{count}", deleted);
-        const response = await message.reply(successMsg);
+        const successMsg = config.messages.purgeSuccess.replace("{count}", String(deletedCount));
+        const response = await safeReply(message, successMsg);
 
         await logAction(
             message.server,
             "PURGE",
             message.author,
             message.channel,
-            `Deleted ${deleted} messages`
+            `Deleted ${deletedCount} messages`
         );
 
         setTimeout(async () => {
             try {
-                await response.delete();
-                await message.delete();
+                if (response) {
+                    await safeApi(() => response.delete());
+                }
+                await safeApi(() => message.delete());
             } catch (e) {
                 console.error("Could not delete purge messages:", e);
             }
         }, config.purge.deleteDelay);
+
     } catch (error) {
         console.error("Error purging messages:", error);
-        await message.reply("❌ Failed to purge messages. Make sure I have the necessary permissions.");
+        await safeReply(message, "❌ Failed to purge messages.");
     }
 }
 
 export async function handleSlowmode(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
-
     if (!await hasPermission(member, "ManageChannels")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const seconds = parseInt(args[0]);
-
     if (isNaN(seconds) || seconds < 0 || seconds > config.slowmode.maxDuration) {
-        return await message.reply(`❌ Please provide a number between 0 and ${config.slowmode.maxDuration} seconds.`);
+        return await safeReply(message, `❌ Please provide a number between 0 and ${config.slowmode.maxDuration} seconds.`);
     }
 
     try {
@@ -78,7 +89,8 @@ export async function handleSlowmode(message, args, member) {
         // This is a placeholder - you may need to use the REST API directly
         // or wait for revolt.js to add this feature
 
-        await message.reply(
+        await safeReply(
+            message,
             `⚠️ Slowmode feature is currently not fully supported by revolt.js. ` +
             `You may need to set this manually in channel settings.\n` +
             `Requested slowmode: ${seconds === 0 ? 'disabled' : `${seconds} seconds`}`
@@ -93,17 +105,16 @@ export async function handleSlowmode(message, args, member) {
         );
     } catch (error) {
         console.error("Error setting slowmode:", error);
-        await message.reply("❌ Failed to set slowmode.");
+        await safeReply(message, "❌ Failed to set slowmode.");
     }
 }
 
 export async function handleLockdown(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
-
     if (!await hasPermission(member, "ManageChannels")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     try {
@@ -111,7 +122,8 @@ export async function handleLockdown(message, args, member) {
         // This is a placeholder implementation
         // You'll need to implement this based on your server's role structure
 
-        await message.reply(
+        await safeReply(
+            message,
             `🔒 Channel lockdown feature requires custom implementation based on your server's role structure.\n` +
             `To implement lockdown:\n` +
             `1. Store the current channel permissions\n` +
@@ -129,6 +141,6 @@ export async function handleLockdown(message, args, member) {
         );
     } catch (error) {
         console.error("Error toggling lockdown:", error);
-        await message.reply("❌ Failed to toggle lockdown.");
+        await safeReply(message, "❌ Failed to toggle lockdown.");
     }
 }

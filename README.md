@@ -1,6 +1,6 @@
 # OpenMod
 
-A modern Stoat bot built with [Node.js](https://nodejs.org) and [revolt.js](https://revolt.js.org).
+A modern Stoat bot built with [TypeScript](https://www.typescriptlang.org/) and [revolt.js](https://revolt.js.org).
 
 ## Features
 
@@ -26,7 +26,7 @@ docker compose up -d
 
 ## Commands
 
-All commands use `!` prefix by default.
+All commands use `/` prefix by default.
 
 ## License
 
@@ -35,5 +35,5 @@ This project is under [MIT License](https://github.com/nadmax/stoat/blob/master/
 ## Links
 
 - [revolt.js](https://revolt.js.org/)
-- [Node.js](https://nodejs.org)
+- [TypeScript](https://www.typescriptlang.org/)
 - [Docker](https://docker.com)

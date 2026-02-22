@@ -1,3 +1,4 @@
+import { safeReply } from "../utils/api.js";
 import { config } from "../config.js";
 
 export async function handleHelp(message) {
@@ -64,5 +65,5 @@ export async function handleHelp(message) {
         helpText += `\n**Auto-Moderation:** ${config.features.antiSpam ? "✅ Anti-Spam" : ""}${config.features.badWordFilter ? " ✅ Bad Word Filter" : ""}`;
     }
 
-    await message.reply(helpText);
+    await safeReply(message, helpText);
 }

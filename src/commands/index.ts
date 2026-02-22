@@ -13,6 +13,7 @@ import {
     handleListReactionRoles,
     handleUpdateRoleMap
 } from "./roles.js";
+import { safeReply } from "../utils/api.js";
 
 export async function handleCommand(message, client) {
     const args = message.content.slice(config.prefix.length).trim().split(/ +/);
@@ -21,8 +22,8 @@ export async function handleCommand(message, client) {
     if (config.rateLimiting.enabled) {
         const rateLimitCheck = rateLimiter.check(message.author.id, command);
         if (rateLimitCheck.limited) {
-            const msg = config.messages.rateLimited.replace("{time}", rateLimitCheck.retryAfter);
-            await message.reply(msg);
+            const msg = config.messages.rateLimited.replace("{time}", String(rateLimitCheck.retryAfter ?? 0));
+            await safeReply(message, msg);
             return;
         }
     }
@@ -129,6 +130,6 @@ export async function handleCommand(message, client) {
         }
     } catch (error) {
         console.error(`Error executing command ${command}:`, error);
-        await message.reply(config.messages.error);
+        await safeReply(message, config.messages.error);
     }
 }

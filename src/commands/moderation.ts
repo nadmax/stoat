@@ -1,19 +1,20 @@
 import { config } from "../config.js";
 import { hasPermission } from "../utils/permissions.js";
 import { logAction } from "../utils/logger.js";
+import { safeReply } from "../utils/api.js";
 
 export async function handleKick(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "KickMembers")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const mentions = message.mentions;
     if (!mentions || mentions.length === 0) {
-        return await message.reply("❌ Please mention a user to kick.");
+        return await safeReply(message, "❌ Please mention a user to kick.");
     }
 
     const targetUser = mentions[0];
@@ -25,7 +26,7 @@ export async function handleKick(message, args, member) {
 
         const successMsg = config.messages.kickSuccess
             .replace("{user}", targetUser.username);
-        await message.reply(`${successMsg} Reason: ${reason}`);
+        await safeReply(message, `${successMsg} Reason: ${reason}`);
 
         if (config.moderation.dmOnKick) {
             try {
@@ -40,22 +41,22 @@ export async function handleKick(message, args, member) {
         }
     } catch (error) {
         console.error("Error kicking user:", error);
-        await message.reply("❌ Failed to kick user. Make sure I have the necessary permissions and the user is kickable.");
+        await safeReply(message, "❌ Failed to kick user. Make sure I have the necessary permissions and the user is kickable.");
     }
 }
 
 export async function handleBan(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "BanMembers")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const mentions = message.mentions;
     if (!mentions || mentions.length === 0) {
-        return await message.reply("❌ Please mention a user to ban.");
+        return await safeReply(message, "❌ Please mention a user to ban.");
     }
 
     const targetUser = mentions[0];
@@ -79,32 +80,32 @@ export async function handleBan(message, args, member) {
 
         const successMsg = config.messages.banSuccess
             .replace("{user}", targetUser.username);
-        await message.reply(`${successMsg} Reason: ${reason}`);
+        await safeReply(message, `${successMsg} Reason: ${reason}`);
     } catch (error) {
         console.error("Error banning user:", error);
-        await message.reply("❌ Failed to ban user. Make sure I have the necessary permissions.");
+        await safeReply(message, "❌ Failed to ban user. Make sure I have the necessary permissions.");
     }
 }
 
 export async function handleUnban(message, args, member) {
     if (!message.server) {
-        return await message.reply(config.messages.serverOnly);
+        return await safeReply(message, config.messages.serverOnly);
     }
 
     if (!await hasPermission(member, "BanMembers")) {
-        return await message.reply(config.messages.noPermission);
+        return await safeReply(message, config.messages.noPermission);
     }
 
     const userId = args[0];
     if (!userId) {
-        return await message.reply("❌ Please provide a user ID to unban.");
+        return await safeReply(message, "❌ Please provide a user ID to unban.");
     }
 
     try {
         await message.server.unbanUser(userId);
-        await message.reply(config.messages.unbanSuccess + ` User ID: ${userId}`);
+        await safeReply(message, config.messages.unbanSuccess + ` User ID: ${userId}`);
     } catch (error) {
         console.error("Error unbanning user:", error);
-        await message.reply("❌ Failed to unban user. Make sure the user is banned and I have the necessary permissions.");
+        await safeReply(message, "❌ Failed to unban user. Make sure the user is banned and I have the necessary permissions.");
     }
 }
