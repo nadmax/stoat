@@ -33,13 +33,6 @@ export async function handlePurge(message: Message, args: string[], member: any)
                 await sleep(400);
             } catch (e) {
                 console.error("Delete failed, retrying once...", e);
-                try {
-                    await sleep(2000);
-                    await safeApi(() => msg.delete());
-                    deletedCount++;
-                } catch (err) {
-                    console.error("Second delete attempt failed:", err);
-                }
             }
         }
 
